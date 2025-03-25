@@ -47,7 +47,7 @@ void BuscarLibros(HWND hwnd) {
     SendMessage(hListResultados, LB_RESETCONTENT, 0, 0);
 
     // Conectar a la base de datos
-    const char* conninfo = "dbname=postgres user=postgres password=Awesome94 host=localhost port=5432";
+    const char* conninfo = "dbname=postgres user=postgres password=iker3112 host=localhost port=5432";
     PGconn* conn = PQconnectdb(conninfo);
 
     if (PQstatus(conn) != CONNECTION_OK) {
