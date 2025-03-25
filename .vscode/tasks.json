@@ -1,0 +1,67 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "cppbuild",
+            "label": "C++: g++ exe personalizado",
+            "command": "C:/msys64/ucrt64/bin/g++.exe",
+            "args": [
+                "-fdiagnostics-color=always",
+                "-g",
+                "${file}",
+                "-o",
+                "${fileDirname}/${fileBasenameNoExtension}.exe",
+                "-I",
+                "C:/Program Files/PostgreSQL/15/include",
+                "-L",
+                "C:/Program Files/PostgreSQL/15/lib",
+                "-lpq",
+                "-mwindows"  // Para asegurarse de que se compile como una aplicación GUI sin consola
+            ],
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "compiler: C:/msys64/ucrt64/bin/g++.exe"
+        },
+        {
+            "label": "Compilar WinAPI",
+            "type": "shell",
+            "command": "C:/msys64/ucrt64/bin/g++.exe",
+            "args": [
+                "${file}",
+                "-o",
+                "${fileDirname}/programa.exe",
+                "-mwindows"  // Asegúrate de que se compile sin consola
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "label": "Compilar como aplicación GUI",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-mwindows",  // Para indicar que es una aplicación GUI
+                "-o",
+                "agregarlibro.exe",
+                "agregarlibro.cpp" // Cambia por el nombre de tu archivo .cpp
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"],
+            "detail": "Compilando como aplicación GUI"
+        }
+    ]
+}
+
