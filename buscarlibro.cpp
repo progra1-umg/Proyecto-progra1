@@ -172,6 +172,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             return 0;
         }
         
+        case WM_ERASEBKGND: {
+            HDC hdc = (HDC)wParam;
+            RECT rc;
+            GetClientRect(hwnd, &rc);
+
+            HBRUSH hBrush = CreateSolidBrush(RGB(139, 69, 19)); // Color café
+            FillRect(hdc, &rc, hBrush);
+
+            DeleteObject(hBrush);
+            return 1; // Indica que el fondo se ha manejado correctamente
+        }
+
         case WM_DESTROY:
             PostQuitMessage(0);
             return 0;
