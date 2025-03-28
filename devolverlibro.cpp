@@ -21,7 +21,7 @@ void DevolverLibro(HWND hwnd) {
     char isbnChar[20];
     wcstombs(isbnChar, isbnW, 20);
 
-    const char* conninfo = "dbname=postgres user=postgres password=L3on4rdo host=localhost port=5432";
+    const char* conninfo = "dbname=postgres user=postgres password=iker3112 host=localhost port=5432";
     PGconn* conn = PQconnectdb(conninfo);
 
     if (PQstatus(conn) != CONNECTION_OK) {
@@ -30,7 +30,6 @@ void DevolverLibro(HWND hwnd) {
         return;
     }
 
-    // Buscar el libro y su estado
     std::string queryBuscar = "SELECT estado_libro FROM Libros WHERE isbn = '" + std::string(isbnChar) + "'";
     PGresult* res = PQexec(conn, queryBuscar.c_str());
 
@@ -50,14 +49,12 @@ void DevolverLibro(HWND hwnd) {
         return;
     }
 
-    // Actualizar el estado del libro a disponible
     std::string queryUpdate = "UPDATE Libros SET estado_libro = 'Disponible' WHERE isbn = '" + std::string(isbnChar) + "'";
     res = PQexec(conn, queryUpdate.c_str());
 
     if (PQresultStatus(res) == PGRES_COMMAND_OK) {
         MessageBox(hwnd, L"El libro ha sido devuelto correctamente.", L"Éxito", MB_ICONINFORMATION);
 
-        // Regresar al menú
         STARTUPINFO si = { sizeof(si) };
         PROCESS_INFORMATION pi;
         if (CreateProcess(L"menu.exe", NULL, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
@@ -89,19 +86,24 @@ void RegresarAlMenu(HWND hwnd) {
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch (uMsg) {
-        case WM_CREATE:
-            CreateWindow(L"STATIC", L"Ingrese ISBN del libro a devolver:", WS_CHILD | WS_VISIBLE, 20, 20, 250, 20, hwnd, NULL, NULL, NULL);
-            hEditISBN = CreateWindow(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER, 20, 45, 250, 25, hwnd, NULL, NULL, NULL);
-            CreateWindow(L"BUTTON", L"Devolver Libro", WS_CHILD | WS_VISIBLE, 20, 80, 250, 30, hwnd, (HMENU)ID_BTN_DEVOLVER, NULL, NULL);
-            CreateWindow(L"BUTTON", L"Regresar al Menú", WS_CHILD | WS_VISIBLE, 20, 120, 250, 30, hwnd, (HMENU)ID_BTN_REGRESAR, NULL, NULL);
+        case WM_CREATE: {
+            RECT rc;
+            GetClientRect(hwnd, &rc);
+            int centerX = (rc.right - 250) / 2;
+
+            CreateWindow(L"STATIC", L"Ingrese ISBN del libro a devolver:", WS_CHILD | WS_VISIBLE, centerX, 20, 250, 20, hwnd, NULL, NULL, NULL);
+            hEditISBN = CreateWindow(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER, centerX, 45, 250, 25, hwnd, NULL, NULL, NULL);
+            CreateWindow(L"BUTTON", L"Devolver Libro", WS_CHILD | WS_VISIBLE, centerX, 80, 250, 30, hwnd, (HMENU)ID_BTN_DEVOLVER, NULL, NULL);
+            CreateWindow(L"BUTTON", L"Regresar al Menú", WS_CHILD | WS_VISIBLE, centerX, 120, 250, 30, hwnd, (HMENU)ID_BTN_REGRESAR, NULL, NULL);
             return 0;
+        }
 
         case WM_ERASEBKGND: {
             HDC hdc = (HDC)wParam;
             RECT rc;
             GetClientRect(hwnd, &rc);
 
-            HBRUSH hBrush = CreateSolidBrush(RGB(139, 69, 19)); // Fondo café igual que en agregar
+            HBRUSH hBrush = CreateSolidBrush(RGB(139, 69, 19));
             FillRect(hdc, &rc, hBrush);
             DeleteObject(hBrush);
             return 1;
@@ -132,13 +134,25 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     RegisterClass(&wc);
 
     HWND hwnd = CreateWindowEx(0, L"Devolver libros", L"Devolver libros",
-        WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 320, 220,
+        WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 500, 400,
         NULL, NULL, hInstance, NULL);
 
     if (hwnd == NULL) {
         MessageBox(NULL, L"No se pudo crear la ventana", L"Error", MB_ICONERROR);
         return 0;
     }
+
+    RECT rc;
+    GetWindowRect(hwnd, &rc);
+    int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+    int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+    int winWidth = rc.right - rc.left;
+    int winHeight = rc.bottom - rc.top;
+
+    SetWindowPos(hwnd, NULL, 
+        (screenWidth - winWidth) / 2, 
+        (screenHeight - winHeight) / 2, 
+        0, 0, SWP_NOZORDER | SWP_NOSIZE);
 
     ShowWindow(hwnd, nCmdShow);
     UpdateWindow(hwnd);
