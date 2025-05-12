@@ -1,147 +1,139 @@
-#define UNICODE
+// prestarlibro.cpp
+
 #include <windows.h>
 #include <libpq-fe.h>
 #include <string>
 #include <cstring>
+#include "prestarlibro.h"
+#include "menu.h" // Para la declaración de RegresarAlMenu
 
 #define ID_BTN_PRESTAR 1
 #define ID_BTN_REGRESAR 2
 
-HWND hEditISBN;
+HWND hEditISBNPrestar;
 
-void PrestarLibro(HWND hwnd) {
-    wchar_t isbn[20];
-    GetWindowText(hEditISBN, isbn, 20);
-
-    if (wcslen(isbn) == 0) {
-        MessageBox(hwnd, L"El campo ISBN es obligatorio.", L"Error", MB_ICONERROR);
-        return;
-    }
-
-    char isbnChar[20];
-    wcstombs(isbnChar, isbn, 20);
-
-    const char* conninfo = "dbname=postgres user=postgres password=iker3112 host=localhost port=5432";
-    PGconn* conn = PQconnectdb(conninfo);
-
-    if (PQstatus(conn) != CONNECTION_OK) {
-        MessageBox(hwnd, L"Error de conexión a la base de datos", L"Error", MB_ICONERROR);
-        PQfinish(conn);
-        return;
-    }
-
-    std::string checkQuery = "SELECT estado_libro FROM Libros WHERE isbn = '" + std::string(isbnChar) + "'";
-    PGresult* checkRes = PQexec(conn, checkQuery.c_str());
-
-    if (PQresultStatus(checkRes) != PGRES_TUPLES_OK || PQntuples(checkRes) == 0) {
-        MessageBox(hwnd, L"No se encontró el libro con el ISBN ingresado.", L"Error", MB_ICONERROR);
-        PQclear(checkRes);
-        PQfinish(conn);
-        return;
-    }
-
-    std::string estado = PQgetvalue(checkRes, 0, 0);
-    PQclear(checkRes);
-
-    if (estado == "prestado") {
-        MessageBox(hwnd, L"El libro ya está prestado y no se puede realizar la operación.", L"Error", MB_ICONERROR);
-        PQfinish(conn);
-        return;
-    }
-
-    std::string updateQuery = "UPDATE Libros SET estado_libro = 'prestado' WHERE isbn = '" + std::string(isbnChar) + "'";
-    PGresult* res = PQexec(conn, updateQuery.c_str());
-
-    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        MessageBox(hwnd, L"Error al prestar el libro.", L"Error", MB_ICONERROR);
-    } else {
-        MessageBox(hwnd, L"El libro ha sido prestado con éxito.", L"Éxito", MB_ICONINFORMATION);
-    }
-
-    PQclear(res);
-    PQfinish(conn);
-}
-
-void RegresarAlMenu(HWND hwnd) {
-    STARTUPINFO si = { sizeof(si) };
-    PROCESS_INFORMATION pi;
-
-    if (CreateProcess(L"menu.exe", NULL, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
-    } else {
-        MessageBox(hwnd, L"No se pudo abrir menu.exe", L"Error", MB_ICONERROR);
-    }
-
-    PostQuitMessage(0);
-}
-
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+LRESULT CALLBACK PrestarLibroProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch (uMsg) {
-        case WM_CREATE:
-            CreateWindow(L"STATIC", L"ISBN:", WS_CHILD | WS_VISIBLE, 50, 50, 400, 25, hwnd, NULL, NULL, NULL);
-            hEditISBN = CreateWindow(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER, 50, 80, 400, 30, hwnd, NULL, NULL, NULL);
+        case WM_CREATE: {
+            RECT rc;
+            GetClientRect(hwnd, &rc);
+            int centerX = (rc.right - 250) / 2;
 
-            CreateWindow(L"BUTTON", L"Prestar Libro", WS_CHILD | WS_VISIBLE, 50, 130, 400, 40, hwnd, (HMENU)ID_BTN_PRESTAR, NULL, NULL);
-            CreateWindow(L"BUTTON", L"Regresar al Menú", WS_CHILD | WS_VISIBLE, 50, 190, 400, 40, hwnd, (HMENU)ID_BTN_REGRESAR, NULL, NULL);
+            CreateWindow(L"STATIC", L"Ingrese ISBN del libro a prestar:", WS_CHILD | WS_VISIBLE, centerX, 20, 250, 20, hwnd, NULL, NULL, NULL);
+            hEditISBNPrestar = CreateWindow(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER, centerX, 45, 250, 25, hwnd, NULL, NULL, NULL);
+            CreateWindow(L"BUTTON", L"Prestar Libro", WS_CHILD | WS_VISIBLE, centerX, 80, 250, 30, hwnd, (HMENU)ID_BTN_PRESTAR, NULL, NULL);
+            CreateWindow(L"BUTTON", L"Regresar al Menú", WS_CHILD | WS_VISIBLE, centerX, 120, 250, 30, hwnd, (HMENU)ID_BTN_REGRESAR, NULL, NULL);
             return 0;
-
+        }
         case WM_ERASEBKGND: {
             HDC hdc = (HDC)wParam;
-            RECT rect;
-            GetClientRect(hwnd, &rect);
+            RECT rc;
+            GetClientRect(hwnd, &rc);
             HBRUSH hBrush = CreateSolidBrush(RGB(139, 69, 19));
-            FillRect(hdc, &rect, hBrush);
+            FillRect(hdc, &rc, hBrush);
             DeleteObject(hBrush);
             return 1;
         }
-
         case WM_COMMAND:
             if (LOWORD(wParam) == ID_BTN_PRESTAR) {
-                PrestarLibro(hwnd);
+                wchar_t isbnW[20];
+                GetWindowText(hEditISBNPrestar, isbnW, 20);
+
+                if (wcslen(isbnW) == 0) {
+                    MessageBox(hwnd, L"Debe ingresar el ISBN del libro a prestar.", L"Error", MB_ICONERROR);
+                    return DefWindowProc(hwnd, uMsg, wParam, lParam);
+                }
+
+                char isbnChar[20];
+                wcstombs(isbnChar, isbnW, 20);
+
+                const char* conninfo = "dbname=postgres user=postgres password=Awesome94 host=localhost port=5432";
+                PGconn* conn = PQconnectdb(conninfo);
+
+                if (PQstatus(conn) != CONNECTION_OK) {
+                    MessageBox(hwnd, L"Error de conexión a la base de datos", L"Error", MB_ICONERROR);
+                    PQfinish(conn);
+                    return DefWindowProc(hwnd, uMsg, wParam, lParam);
+                }
+
+                std::string queryBuscar = "SELECT estado_libro FROM Libros WHERE isbn = '" + std::string(isbnChar) + "'";
+                PGresult* res = PQexec(conn, queryBuscar.c_str());
+
+                if (PQresultStatus(res) != PGRES_TUPLES_OK || PQntuples(res) == 0) {
+                    MessageBox(hwnd, L"No se encontró el libro con el ISBN ingresado", L"Error", MB_ICONINFORMATION);
+                    PQclear(res);
+                    PQfinish(conn);
+                    return DefWindowProc(hwnd, uMsg, wParam, lParam);
+                }
+
+                std::string estado = PQgetvalue(res, 0, 0);
+                PQclear(res);
+
+                if (estado != "Disponible" && estado != "disponible" && estado != "DISPONIBLE") {
+                    MessageBox(hwnd, L"El libro no está disponible para préstamo.", L"Advertencia", MB_ICONWARNING);
+                    PQfinish(conn);
+                    return DefWindowProc(hwnd, uMsg, wParam, lParam);
+                }
+
+                std::string queryUpdate = "UPDATE Libros SET estado_libro = 'Prestado' WHERE isbn = '" + std::string(isbnChar) + "'";
+                PGresult* resUpdate = PQexec(conn, queryUpdate.c_str());
+
+                if (PQresultStatus(resUpdate) == PGRES_COMMAND_OK) {
+                    MessageBox(hwnd, L"El libro ha sido prestado.", L"Éxito", MB_ICONINFORMATION);
+                } else {
+                    MessageBox(hwnd, L"Ocurrió un error al prestar el libro.", L"Error", MB_ICONERROR);
+                }
+
+                PQclear(resUpdate);
+                PQfinish(conn);
             } else if (LOWORD(wParam) == ID_BTN_REGRESAR) {
                 RegresarAlMenu(hwnd);
             }
             return 0;
-
         case WM_DESTROY:
-            PostQuitMessage(0);
             return 0;
     }
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-    WNDCLASS wc = { 0 };
-    wc.lpfnWndProc = WindowProc;
+void prestarLibro(HWND hParent) {
+    HINSTANCE hInstance = GetModuleHandle(NULL);
+    const wchar_t CLASS_NAME[] = L"PrestarLibroClass";
+
+    WNDCLASS wc = {};
+    wc.lpfnWndProc = PrestarLibroProc;
     wc.hInstance = hInstance;
-    wc.lpszClassName = L"Prestar libros";
-    wc.hbrBackground = CreateSolidBrush(RGB(139, 69, 19));
+    wc.lpszClassName = CLASS_NAME;
+    wc.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1);
 
     RegisterClass(&wc);
 
-    int screenWidth = GetSystemMetrics(SM_CXSCREEN);
-    int screenHeight = GetSystemMetrics(SM_CYSCREEN);
-    int windowWidth = 500;
-    int windowHeight = 400;
+    RECT rcParent;
+    GetWindowRect(hParent, &rcParent);
+    int parentWidth = rcParent.right - rcParent.left;
+    int parentHeight = rcParent.bottom - rcParent.top;
 
-    HWND hwnd = CreateWindowEx(0, L"Prestar libros", L"Prestar libro",
-        WS_OVERLAPPEDWINDOW, (screenWidth - windowWidth) / 2, (screenHeight - windowHeight) / 2,
-        windowWidth, windowHeight, NULL, NULL, hInstance, NULL);
+    int width = 400;
+    int height = 200;
+    int x = rcParent.left + (parentWidth - width) / 2;
+    int y = rcParent.top + (parentHeight - height) / 2;
 
-    if (hwnd == NULL) {
-        MessageBox(NULL, L"No se pudo crear la ventana", L"Error", MB_ICONERROR);
-        return 0;
+    HWND hwnd = CreateWindowEx(
+        0,
+        CLASS_NAME,
+        L"Prestar Libro",
+        WS_CAPTION | WS_SYSMENU,
+        x, y, width, height,
+        hParent,
+        nullptr,
+        hInstance,
+        nullptr);
+
+    if (!hwnd) {
+        MessageBox(hParent, L"No se pudo crear la ventana de Prestar libro.", L"Error", MB_ICONERROR);
+        return;
     }
 
-    ShowWindow(hwnd, nCmdShow);
+    ShowWindow(hwnd, SW_SHOWNORMAL);
     UpdateWindow(hwnd);
-
-    MSG msg;
-    while (GetMessage(&msg, NULL, 0, 0)) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-    }
-
-    return (int)msg.wParam;
 }

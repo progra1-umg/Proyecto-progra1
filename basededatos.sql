@@ -1,7 +1,7 @@
 -- Creación de la base de datos
 CREATE DATABASE Biblioteca;
 
--- Creación de la tabla 'Libros'
+-- Una vez conectados a la base, crear la tabla:
 CREATE TABLE Libros (
     id SERIAL PRIMARY KEY,
     titulo VARCHAR(255) NOT NULL,
@@ -11,6 +11,9 @@ CREATE TABLE Libros (
     anio_publicacion INTEGER NOT NULL,
     materia VARCHAR(100) NOT NULL
 );
+
+-- Agregar columna para estado del libro
+ALTER TABLE Libros ADD COLUMN estado_libro VARCHAR(50) DEFAULT 'disponible';
 
 -- Inserción de datos de prueba
 INSERT INTO Libros (titulo, autor, isbn, editorial, anio_publicacion, materia)
@@ -27,6 +30,12 @@ CREATE OR REPLACE FUNCTION agregar_libro(
     p_anio_publicacion INTEGER,
     p_materia VARCHAR
 ) RETURNS TEXT AS $$
-BEGIN}
-
-ALTER TABLE libros ADD COLUMN estado_libro VARCHAR(50);
+BEGIN
+    INSERT INTO Libros (titulo, autor, isbn, editorial, anio_publicacion, materia)
+    VALUES (p_titulo, p_autor, p_isbn, p_editorial, p_anio_publicacion, p_materia);
+    RETURN 'Libro agregado correctamente.';
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN 'Error al agregar el libro: ' || SQLERRM;
+END;
+$$ LANGUAGE plpgsql;
